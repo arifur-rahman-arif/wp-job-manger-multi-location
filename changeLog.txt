@@ -1,0 +1,222 @@
+Replace this search_query function with this code block at wp-content/plugins/wpjm-jobs-geolocation/includes/class-gjm-jobs-query.php
+
+ public function search_query($query_args) {
+
+        if (!empty($_REQUEST['form_data'])) { // WPCS: CSRF ok.
+
+            wp_parse_str($_REQUEST['form_data'], $form_data); // WPCS: CSRF ok, sanitization ok.
+
+            // It seems that the form_date key has changed in WP Job Manager v1.33.0.
+        } elseif (!empty($_REQUEST['$form_data'])) { // WPCS: CSRF ok.
+
+            wp_parse_str($_REQUEST['$form_data'], $form_data); // WPCS: CSRF ok, sanitization ok.
+
+        } else {
+
+            return $query_args;
+        }
+
+        if (empty($form_data[$this->prefix . '_use'])) {
+
+            return $query_args;
+
+            // check if we are using the shortcode attributes settings.
+        } elseif (1 === absint($form_data[$this->prefix . '_use'])) {
+
+            $this->filters = wp_parse_args($_REQUEST['form_data'], $this->shortcode_atts()); // WPCS: CSRF ok, sanitization ok.
+
+            // otherwise, are we using the admin settings.
+        } elseif (2 === absint($form_data[$this->prefix . '_use'])) {
+
+            $this->filters = wp_parse_args($form_data, $this->settings['search_form']);
+
+            // abort if geolocation disable for this shortcode.
+        } else {
+
+            return $query_args;
+        }
+
+        // =====================
+        // Start commenting here
+        // =====================
+
+        // $this->labels = gjm_labels();
+        // $this->query_posts_without_location = apply_filters('gjm_query_posts_without_location', $this->query_posts_without_location, $this->filters);
+        // $this->orderby_featured_distance = apply_filters('gjm_orderby_featured_distance', $this->orderby_featured_distance, $this->filters);
+        // self::$enable_boundaries_search = apply_filters('gjm_search_within_boundaries', self::$enable_boundaries_search, $this->filters);
+        // $this->search_boundries_in_meta = apply_filters('gjm_search_boundries_in_meta', $this->search_boundries_in_meta, $this->filters);
+
+        // // add values to query args cache.
+        // $query_args[$this->prefix]['query_posts_without_location'] = $this->query_posts_without_location;
+        // $query_args[$this->prefix]['orderby_featured_distance'] = $this->orderby_featured_distance;
+        // $query_args[$this->prefix]['search_boundries_in_meta'] = $this->search_boundries_in_meta;
+        // $query_args[$this->prefix]['enable_boundaries_search'] = self::$enable_boundaries_search;
+
+        // // set default user coords.
+        // $this->filters['user_location']['lat'] = false;
+        // $this->filters['user_location']['lng'] = false;
+
+        // if (empty($this->filters['radius'])) {
+        //     $this->filters['radius'] = !empty($this->filters[$this->prefix . '_radius']) ? $this->filters[$this->prefix . '_radius'] : '200';
+        // }
+
+        // // add geo values to query args so it can be saved in WP Job Manager cache.
+        // $query_args[$this->prefix]['location'] = $this->filters['search_location'];
+        // $query_args[$this->prefix]['units'] = $this->filters[$this->prefix . '_units'];
+        // $query_args[$this->prefix]['radius'] = $this->filters['radius'];
+
+        // $this->filters['doing_boundries_search'] = false;
+
+        // if (!empty($this->filters['state']) || !empty($this->filters['country'])) {
+        //     $this->filters['doing_boundries_search'] = true;
+        // }
+
+        // disable the location query made by WP Job Manager
+        // We are doing our own proximity search query.
+        // if (!empty($query_args[$this->prefix]['location'])) {
+
+        //     if (!$this->filters['doing_boundries_search'] || (!$this->search_boundries_in_meta && $this->filters['doing_boundries_search'])) {
+
+        //         unset($query_args['meta_query'][0]);
+        //     }
+        // }
+
+        // if we are using gjm orderby we will need to override the original setting created by Wp Jobs Manager plugin.
+        // Unless when using orderby "featured" which is when we will leave it as is.
+        // if (!empty($this->filters[$this->prefix . '_orderby'])) {
+
+        //     if ('featured' !== $this->filters[$this->prefix . '_orderby']) {
+
+        //         // force gjm orderby value from dropdown or default value.
+        //         $query_args['orderby'] = $this->filters[$this->prefix . '_orderby'];
+
+        //         // adjust the order of posts when choosing to order by title.
+        //         if ('title' === $this->filters[$this->prefix . '_orderby']) {
+        //             $query_args['order'] = 'ASC';
+        //         }
+        //     } else {
+
+        //         $query_args['orderby'] = array(
+        //             'menu_order' => 'ASC',
+        //             'date'       => 'DESC',
+        //             'ID'         => 'DESC'
+        //         );
+        //     }
+
+        //     // set the original orderby by Wp Job Manager plugin.
+        // } elseif (empty($this->filters[$this->prefix . '_orderby']) && !empty($this->filters['search_location'])) {
+
+        //     $query_args['orderby'] = apply_filters('gjm_default_orderby', $query_args['orderby'], $this);
+        //     $this->filters[$this->prefix . '_orderby'] = $query_args['orderby'];
+        // }
+
+        // when searching by address.
+        if (!empty($this->filters['search_location']) && 'Any Location' !== $this->filters['search_location'] && 'Location' !== $this->filters['search_location']) {
+
+            // look for coords in filters.
+            if (!empty($this->filters['latitude']) && !empty($this->filters['longitude'])) {
+
+                $this->filters['user_location']['lat'] = $this->filters['latitude'];
+                $this->filters['user_location']['lng'] = $this->filters['longitude'];
+
+                // look for coords in URL.
+            } elseif (!empty($_GET['latitude']) && !empty($_GET['longitude'])) { // WPCS: CSRF ok.
+
+                $this->filters['user_location']['lat'] = $_GET['latitude']; // WPCS: CSRF ok, sanitization ok.
+                $this->filters['user_location']['lng'] = $_GET['longitude']; // WPCS: CSRF ok, sanitization ok.
+
+                // in case that an address was entered and was not geocoded via client site
+                // try again via serverside.
+            } elseif (class_exists('WP_Job_Manager_Geocode')) {
+
+                $this->geocoded = WP_Job_Manager_Geocode::get_location_data($this->filters['search_location']);
+
+                if (is_array($this->geocoded) && !is_wp_error($this->geocoded) && !empty($this->geocoded['lat']) && !empty($this->geocoded['long'])) {
+
+                    $this->filters['user_location']['lat'] = $this->geocoded['lat'];
+                    $this->filters['user_location']['lng'] = $this->geocoded['long'];
+                }
+            }
+        }
+
+        // Query locations by joining the locations table.
+        // if (!apply_filters('gjm_stand_alone_locations_query_enabled', false, $this->filters)) {
+
+        //     add_filter('posts_clauses', array($this, 'query_clauses'), 50, 2);
+
+        //     // Or do a separate location query then pass the posts ID to the WP_Query.
+        // } else {
+
+        //     // default locations query args.
+        //     $locations_query_args = array(
+        //         'post_type' => $this->post_type_query,
+        //         'lat'       => $this->filters['user_location']['lat'],
+        //         'lng'       => $this->filters['user_location']['lng'],
+        //         'radius'    => $this->filters['radius'],
+        //         'units'     => $this->filters[$this->prefix . '_units'],
+        //         'state'     => $this->filters['state'],
+        //         'country'   => $this->filters['country'],
+        //         'orderby'   => $this->filters['orderby']
+        //     );
+
+        //     // do locations query.
+        //     $locations_data = self::get_locations_data($locations_query_args);
+
+        //     // get locations data.
+        //     $this->locations_data = $locations_data['data'];
+
+        //     // When searching based on location, we need to include the locatios post ID in the WP_Query.
+        //     // This is to restricts the query to only show posts with location and exclude the "Anywhere" jobs.
+        //     // Otherwise, we skip this and the query will include all jobs, with or without location.
+        //     if (!empty($this->filters['user_location']['lat']) && !empty($this->filters['user_location']['lng'])) {
+
+        //         // pass the locations post ID into the WP_Query.
+        //         $query_args['post__in'] = !empty($locations_data['posts_id']) ? $locations_data['posts_id'] : array('0');
+
+        //         // when sorting by distance we pass "post__in" to the orderby arg.
+        //         // This way the query will sort the results based on the locations post ID, which are ordered
+        //         // by the distance.
+        //         if ('distance' === $this->filters[$this->prefix . '_orderby']) {
+        //             $query_args['orderby'] = 'post__in';
+        //         }
+        //     }
+        // }
+
+        // =====================
+        // End commenting here
+        // =====================
+
+        // when map enabled we use the_post action to generate some data for the map
+
+        // and pass it to the JS file.
+        if (1 === absint($this->filters[$this->prefix . '_map'])) {
+
+            add_action('the_post', array($this, 'the_post'));
+
+            if ('grm' === $this->prefix) {
+                add_filter('resume_manager_get_listings_result', array($this, 'map_element'), 90, 2);
+            } else {
+                add_filter('job_manager_get_listings_result', array($this, 'map_element'), 90, 2);
+            }
+        }
+
+        return $query_args;
+}
+
+
+
+Add extra meta field to existing meta array for additional location search at wp-content/plugins/wp-job-manager/wp-job-manager-functions.php
+    inside this function get_job_listings()
+
+if (!empty($args['search_location'])) {
+        $location_meta_keys = ['geolocation_formatted_address', '_job_location', 'geolocation_state_long', '_additionallocations'];
+        $location_search = ['relation' => 'OR'];
+        foreach ($location_meta_keys as $meta_key) {
+            $location_search[] = [
+                'key'     => $meta_key,
+                'value'   => $args['search_location'],
+                'compare' => 'like'
+            ];
+        }
+    $query_args['meta_query'][] = $location_search;
+}
