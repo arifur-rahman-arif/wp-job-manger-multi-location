@@ -211,6 +211,13 @@ Add extra meta field to existing meta array for additional location search at wp
 if (!empty($args['search_location'])) {
         $location_meta_keys = ['geolocation_formatted_address', '_job_location', 'geolocation_state_long', '_additionallocations'];
         $location_search = ['relation' => 'OR'];
+
+        $zipCodesToLocation = convertZipCodeToState();
+
+        if (isset($zipCodesToLocation[$args['search_location']]) && $zipCodesToLocation[$args['search_location']]) {
+            $args['search_location'] = $zipCodesToLocation[$args['search_location']];
+        }
+
         foreach ($location_meta_keys as $meta_key) {
             $location_search[] = [
                 'key'     => $meta_key,
@@ -219,4 +226,75 @@ if (!empty($args['search_location'])) {
             ];
         }
     $query_args['meta_query'][] = $location_search;
+}
+
+
+Add this function to wp-content/plugins/wp-job-manager/wp-job-manager-functions.php for zip code serach feature that will be 
+    called in get_job_listings() function which is located in the same page.
+
+
+function convertZipCodeToState() {
+    $locationsForZipCodes = [
+        '36104' => 'Montgomery, AL',
+        '99801' => 'Juneau, AK',
+        '85001' => 'Phoenix, AZ',
+        '72201' => 'Little Rock, AR',
+        '95814' => 'Sacramento, CA',
+        '80202' => 'Denver, CO',
+        '06103' => 'Hartford, CT',
+        '19901' => 'Dover, DE',
+        '32301' => 'Tallahassee, FL',
+        '30303' => 'Atlanta, GA',
+        '96813' => 'Honolulu, HI',
+        '83702' => 'Boise, ID',
+        '62701' => 'Springfield, IL',
+        '46225' => 'Indianapolis, IN',
+        '50309' => 'Des Moines, IA',
+        '66603' => 'Topeka, KS',
+        '40601' => 'Frankfort, KY',
+        '70802' => 'Baton Rouge, LA',
+        '04330' => 'Augusta, ME',
+        '21401' => 'Annapolis, MD',
+        '02201' => 'Boston, MA',
+        '48933' => 'Lansing, MI',
+        '55102' => 'St. Paul, MN',
+        '39205' => 'Jackson, MS',
+        '65101' => 'Jefferson City, MO',
+        '59623' => 'Helena, MT',
+        '68502' => 'Lincoln, NE',
+        '89701' => 'Carson City, NV',
+        '03301' => 'Concord, NH',
+        '08608' => 'Trenton, NJ',
+        '87501' => 'Santa Fe, NM',
+        '12207' => 'Albany, NY',
+        '27601' => 'Raleigh, NC',
+        '58501' => 'Bismarck, ND',
+        '43215' => 'Columbus, OH',
+        '73102' => 'Oklahoma City, OK',
+        '97301' => 'Salem, OR',
+        '17101' => 'Harrisburg, PA',
+        '02903' => 'Providence, RI',
+        '29217' => 'Columbia, SC',
+        '57501' => 'Pierre, SD',
+        '37219' => 'Nashville, TN',
+        '78701' => 'Austin, TX',
+        '84111' => 'Salt Lake City, UT',
+        '05602' => 'Montpelier, VT',
+        '23219' => 'Richmond, VA',
+        '98507' => 'Olympia, WA',
+        '25301' => 'Charleston, WV',
+        '53703' => 'Madison, WI',
+        '82001' => 'Cheyenne, WY',
+        '96799' => 'Pago Pago, AS',
+        '20001' => 'Washington, DC',
+        '96941' => 'Kolonia, FM',
+        '96910' => 'Agana (Hagåtña), GU',
+        '96960' => 'Majuro, MH',
+        '96950' => 'Saipan, MP',
+        '96939' => 'Melekeok, PW',
+        '00901' => 'San Juan, PR',
+        '00802' => 'Charlotte Amalie, VI'
+    ];
+
+    return $locationsForZipCodes;
 }
