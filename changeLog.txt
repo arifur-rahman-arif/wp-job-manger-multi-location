@@ -298,3 +298,16 @@ function convertZipCodeToState() {
 
     return $locationsForZipCodes;
 }
+
+
+
+
+add these two function in wp-content/plugins/wp-job-manager/templates/content-job_listing.php inside <div class="location"></div>
+
+<div class="location">
+        <!-- <?php the_job_location(false);?> -->
+
+        <?php $locations = getSingleJobLocations($post->ID);?>
+
+        <?php echo singleLocationString($locations); ?>
+</div>

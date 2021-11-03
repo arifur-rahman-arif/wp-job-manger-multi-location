@@ -5,7 +5,7 @@
  * Description: Enable adding multiple locations for a single listing for admin. This plugin also shows in the multiple locations on the frontend search and single listing page location map.
  * Author:      Azizul Haque
  * Author URI:  https://keendevs.com
- * Version:     6.0
+ * Version:     6.1
  * Text Domain: multi-location
  * Domain Path: /languages
  * License: GPLv2 or later
@@ -40,7 +40,7 @@ class Keendevs_Multi_Location_WP_JOB_M {
      * @since 1.0
      */
     public function __construct() {
-        $this->version = '6.0';
+        $this->version = '6.1';
         $this->file = __FILE__;
         $this->basename = plugin_basename($this->file);
         $this->plugin_dir = plugin_dir_path($this->file);
@@ -88,19 +88,110 @@ class Keendevs_Multi_Location_WP_JOB_M {
 
         // Filter Main job location
         add_filter('the_job_location_map_link', [$this, 'filterMainJobLocation'], 10, 3);
+
+        add_filter('manage_edit-job_listing_columns', [$this, 'filterJobListingColumn'], 999);
+        add_filter('manage_edit-job_listing_sortable_columns', [$this, 'makeLocationSortable'], 999);
+        add_action('manage_job_listing_posts_custom_column', [$this, 'manageDataOfLocationColumn'], 99, 2);
     }
 
     /**
-     * @return null
+     * @param  $columns
+     * @return mixed
+     */
+    public function filterJobListingColumn($columns) {
+        unset($columns['job_location']);
+
+        $columns['job_locations'] = esc_html('Job Locations');
+
+        return $columns;
+    }
+
+    /**
+     * @param $column
+     * @param $postID
+     */
+    public function manageDataOfLocationColumn($column, $postID) {
+
+        switch ($column) {
+
+        case 'job_locations':
+
+            $locations = $this->getSingleJobLocations($postID);
+
+            echo $this->singleLocationString($locations);
+
+            break;
+
+        default:
+            echo '';
+            break;
+        }
+    }
+
+    /**
+     * @param $sortableColumns
+     */
+    public function makeLocationSortable($sortableColumns) {
+
+        $sortableColumns['job_locations'] = 'job_locations';
+
+        return $sortableColumns;
+    }
+
+    /**
+     * @param $postID
+     */
+    public function getSingleJobLocations($postID) {
+
+        $additionalLocations = get_post_meta($postID, '_additionallocations', true);
+
+        $primaryLocationLating = get_post_meta($postID, 'geolocation_lat', true);
+        $primaryLocationLong = get_post_meta($postID, 'geolocation_long', true);
+        $primaryLocationAddress = get_post_meta($postID, '_job_location', true);
+
+        if (!$additionalLocations) {
+            $additionalLocations = [];
+        }
+
+        array_push($additionalLocations, [
+            'address' => $primaryLocationAddress,
+            'lat'     => $primaryLocationLating,
+            'lng'     => $primaryLocationLong
+        ]);
+
+        return $additionalLocations;
+
+    }
+
+    // Make all the location of a single job post type as a single string with comma separated
+    /**
+     * @param  $locations
+     * @return mixed
+     */
+    public function singleLocationString($locations) {
+        if (!$locations) {
+            return '';
+        }
+
+        $locationArray = [];
+
+        foreach ($locations as $key => $location) {
+            array_push($locationArray, $location['address']);
+        }
+
+        return implode(" | ", $locationArray);
+    }
+
+    /**
+     * @return array
      */
     public function localize_scripts_data() {
-        // localize script data
+        global $post;
 
-        if (get_post_type() != 'job_listing') {
+        if (get_post_type($post) != 'job_listing') {
             return;
         }
 
-        global $post;
         $listing_id = $post->ID;
 
         $defaultLatLng = array(
@@ -113,10 +204,12 @@ class Keendevs_Multi_Location_WP_JOB_M {
                 $extraMarkers = array_filter($locations, array($this, 'secure_location_data'));
             }
         }
-        $this->local = array(
+        $markers = array(
             'defaultLatLng'       => $defaultLatLng,
             'additionallocations' => isset($extraMarkers) ? $extraMarkers : null
         );
+
+        return $markers;
     }
 
     /**
@@ -143,13 +236,13 @@ class Keendevs_Multi_Location_WP_JOB_M {
     }
 
     public function register_scripts() {
-        $this->localize_scripts_data();
+        $localizeData = $this->localize_scripts_data();
 
         wp_enqueue_style('multi-location-css', $this->plugin_url . 'assets/css/multilocation.css');
-        if (is_admin() && (isset($_GET['post']) && 'job_listing' === get_post_type($_GET['post']))) {
-        }
+
         wp_enqueue_script('admin-script', $this->plugin_url . 'assets/js/admin-script.js', array('jquery', 'mapify'), $this->version, true);
-        wp_localize_script('admin-script', 'additionallocations', $this->local['additionallocations']);
+
+        wp_localize_script('admin-script', 'additionallocations', $localizeData);
     }
 
     public function frontEndScripts() {
@@ -271,11 +364,11 @@ class Keendevs_Multi_Location_WP_JOB_M {
 
         }
 
-        echo '<style>
+        $content .= '<style>
             .single_job_listing .location::before {
                 display: none !important;
             }
-        </style>';
+            </style>';
 
         $content .= $previousContent;
 
@@ -411,6 +504,8 @@ function wp_job_manager_multi_location() {
             return;
         }
     }
+
+    require_once plugin_dir_path(__FILE__) . 'functions.php';
     return Keendevs_Multi_Location_WP_JOB_M::instance();
 }
 
