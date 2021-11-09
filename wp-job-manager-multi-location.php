@@ -5,7 +5,7 @@
  * Description: Enable adding multiple locations for a single listing for admin. This plugin also shows in the multiple locations on the frontend search and single listing page location map.
  * Author:      Azizul Haque
  * Author URI:  https://keendevs.com
- * Version:     6.1
+ * Version:     7.0
  * Text Domain: multi-location
  * Domain Path: /languages
  * License: GPLv2 or later
@@ -40,7 +40,8 @@ class Keendevs_Multi_Location_WP_JOB_M {
      * @since 1.0
      */
     public function __construct() {
-        $this->version = '6.1';
+        $this->version = '7.0';
+        // $this->version = time();
         $this->file = __FILE__;
         $this->basename = plugin_basename($this->file);
         $this->plugin_dir = plugin_dir_path($this->file);
@@ -92,6 +93,119 @@ class Keendevs_Multi_Location_WP_JOB_M {
         add_filter('manage_edit-job_listing_columns', [$this, 'filterJobListingColumn'], 999);
         add_filter('manage_edit-job_listing_sortable_columns', [$this, 'makeLocationSortable'], 999);
         add_action('manage_job_listing_posts_custom_column', [$this, 'manageDataOfLocationColumn'], 99, 2);
+
+        /* get job listing based on location meta serach */
+        add_action('wp_ajax_addition_loation_search', [$this, 'getJobListingByMeta']);
+        add_action('wp_ajax_nopriv_addition_loation_search', [$this, 'getJobListingByMeta']);
+    }
+
+    public function getJobListingByMeta() {
+        $output = [];
+
+        if (sanitize_text_field($_POST['action']) !== 'addition_loation_search') {
+            $output['response'] = 'invalid';
+            $output['message'] = 'Action is not valid';
+            echo json_encode($output);
+            wp_die();
+        }
+
+        $nearbyLocations = $this->sanitizeData($_POST['nearbyLocations']);
+
+        $args = [
+            'post_type'      => 'job_listing',
+            'posts_per_page' => -1,
+            'post_status'    => 'publish',
+            'meta_query'     => [
+                'relation' => 'OR',
+                [
+                    'key'     => '_job_location',
+                    'value'   => $nearbyLocations,
+                    'compare' => 'LIKE'
+                ],
+                [
+                    'key'     => '_additionallocations',
+                    'value'   => $nearbyLocations,
+                    'compare' => 'LIKE'
+                ]
+            ]
+        ];
+
+        $jobListings = get_posts($args);
+
+        if (!$jobListings) {
+            $output['response'] = 'empty';
+            $output['message'] = 'No job found';
+            echo json_encode($output);
+            wp_die();
+        }
+
+        $posts = [];
+
+        foreach ($jobListings as $key => $job) {
+
+            $posts[$job->ID]['locations'] = get_post_meta($job->ID, '_additionallocations', true);
+            $posts[$job->ID]['postID'] = $job->ID;
+            $posts[$job->ID]['postTitle'] = esc_html(get_the_title($job->ID));
+            $posts[$job->ID]['postURL'] = esc_url(get_permalink($job->ID));
+            $posts[$job->ID]['attachmentURL'] = esc_url(get_the_post_thumbnail_url($job->ID));
+            $posts[$job->ID]['companyName'] = esc_html(get_post_meta($job->ID, '_company_name', true));
+            $posts[$job->ID]['jobTypes'] = [];
+            $posts[$job->ID]['postedTime'] = '<li class="date"><time datetime="' . get_the_time('y-m-d', $job->ID) . '">Posted ' . human_time_diff(get_the_time('U', $job->ID), current_time('U')) . ' ago</time></li>';
+
+            $jobTypes = get_the_terms($job->ID, 'job_listing_type');
+
+            if ($jobTypes) {
+                foreach ($jobTypes as $key => $jobType) {
+                    array_push($posts[$job->ID]['jobTypes'], '<li class="job-type ' . esc_attr($jobType->slug) . '">' . esc_html($jobType->name) . '</li>');
+                }
+            }
+
+            $primaryLocationLating = get_post_meta($job->ID, 'geolocation_lat', true);
+            $primaryLocationLong = get_post_meta($job->ID, 'geolocation_long', true);
+            $primaryLocationAddress = get_post_meta($job->ID, '_job_location', true);
+
+            if ($primaryLocationLating && $primaryLocationLong && $primaryLocationAddress) {
+
+                array_push($posts[$job->ID]['locations'], [
+                    'address' => $primaryLocationAddress,
+                    'lat'     => $primaryLocationLating,
+                    'lng'     => $primaryLocationLong
+                ]);
+            }
+
+        }
+
+        if ($posts) {
+            $output['response'] = 'success';
+            $output['message'] = 'Job found';
+            $output['results'] = $posts;
+            echo json_encode($output);
+        } else {
+            $output['response'] = 'empty';
+            $output['message'] = 'No job found';
+            echo json_encode($output);
+            wp_die();
+        }
+
+        wp_die();
+    }
+
+    /**
+     * @param  array   $NonSanitzedData
+     * @return mixed
+     */
+    public function sanitizeData(array $NonSanitzedData) {
+        $sanitizedData = null;
+
+        $sanitizedData = array_map(function ($data) {
+            if (gettype($data) == 'array') {
+                return $this->sanitizeData($data);
+            } else {
+                return sanitize_text_field($data);
+            }
+        }, $NonSanitzedData);
+
+        return $sanitizedData;
     }
 
     /**
@@ -265,6 +379,12 @@ class Keendevs_Multi_Location_WP_JOB_M {
             $this->version,
             true
         );
+
+        // Localize variables for frontend scripts
+        wp_localize_script('gjm-map', 'localizeData', [
+            'siteURL' => site_url('/'),
+            'ajaxURL' => admin_url('admin-ajax.php')
+        ]);
 
     }
 
@@ -512,3 +632,5 @@ function wp_job_manager_multi_location() {
 add_action('plugins_loaded', 'wp_job_manager_multi_location', 99);
 
 // [jobs gjm_use=2]
+// AIzaSyBS1Z4OP83YXpyI08oOoz-JTSGuRta8G-g
+// AIzaSyD9rSRK-_zeTZlpTbgiityQ4NkoIxQWcmo

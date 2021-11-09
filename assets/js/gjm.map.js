@@ -976,7 +976,6 @@ jQuery(document).ready(function ($) {
 
         // gjmMapObject.map_options.zoomLevel = parseInt(listifyLocationsData.mapZoom);
 
-        console.log(gjmMapObject);
         // if not yet exists, generate a new map
         if (typeof GJM_Maps[map_id] == "undefined") {
             GJM_Maps[map_id] = new GJM_Map(map_id, prefix);
@@ -1075,7 +1074,6 @@ jQuery(document).ready(function ($) {
      * @return {[type]}        [description]
      */
     jQuery(".job_listings, .resumes").on("updated_results", function (event, result) {
-        console.log(result.additionalLocations);
         if (result.additionalLocations) {
             result.additionalLocations.forEach((locationObject) => {
                 for (const key in locationObject) {
@@ -1086,7 +1084,7 @@ jQuery(document).ready(function ($) {
                             address: singleLocation.address,
                             distance: "",
                             formatted_address: singleLocation.address,
-                            info_window_content: `<a class="title" href="${singleLocation.postURL}" title="Test Hiring">${singleLocation.postTitle}</a><span class="location gjm-icon-location">${singleLocation.address}</span>`,
+                            info_window_content: `<a class="title" href="${singleLocation.postURL}" title="${singleLocation.address}">${singleLocation.postTitle}</a><span class="location gjm-icon-location">${singleLocation.address}</span>`,
                             lat: singleLocation.lat,
                             lng: singleLocation.lng,
                             long: singleLocation.lng,
@@ -1096,6 +1094,144 @@ jQuery(document).ready(function ($) {
                 }
             });
         }
+
+        if (result.found_jobs == false) {
+            let locationGeoCode = null;
+
+            let searchAddress = $(".job_listings #search_location").val();
+
+            $.ajax({
+                method: "GET",
+                async: false,
+                url: `https://maps.googleapis.com/maps/api/geocode/json?address=${searchAddress}&key=AIzaSyD9rSRK-_zeTZlpTbgiityQ4NkoIxQWcmo`,
+                dataType: "json",
+                success: function (response) {
+                    locationGeoCode = response.results[0]?.geometry.location;
+                },
+                error: (err) => {
+                    console.error(err);
+                    return;
+                },
+            });
+
+            let nearbyLocations = [];
+
+            if (locationGeoCode.lat && locationGeoCode.lng) {
+                $.ajax({
+                    method: "GET",
+                    async: false,
+                    url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&radius=321869&key=AIzaSyD9rSRK-_zeTZlpTbgiityQ4NkoIxQWcmo`,
+                    success: function (response) {
+                        if (response.results) {
+                            response.results.forEach((cityLoations) => {
+                                let city = cityLoations.vicinity.split(",")[1]?.trim();
+
+                                if (city == undefined) {
+                                    city = cityLoations.vicinity?.trim();
+                                }
+
+                                if (nearbyLocations.indexOf(city) == -1) {
+                                    nearbyLocations.push(city);
+                                }
+                            });
+                        }
+                    },
+                    error: (err) => {
+                        console.error(err);
+                    },
+                });
+            }
+
+            if (nearbyLocations) {
+                $.ajax({
+                    type: "POST",
+                    async: false,
+                    url: localizeData.ajaxURL,
+                    data: {
+                        action: "addition_loation_search",
+                        nearbyLocations,
+                    },
+                    success: function (response) {
+                        if (response) {
+                            let results = JSON.parse(response).results;
+
+                            if (results) {
+                                result.found_jobs = true;
+
+                                // clear the listing html
+                                $("job_listings .no_job_listings_found").html("");
+
+                                for (const key in results) {
+                                    if (Object.hasOwnProperty.call(results, key)) {
+                                        let singleLocation = results[key];
+
+                                        if (singleLocation.locations) {
+                                            // console.log(singleLocation);
+
+                                            let joinedLocations = [];
+
+                                            singleLocation.locations.forEach(
+                                                (additionalLocation) => {
+                                                    result.gjm_map.locations.push({
+                                                        post_id: singleLocation.postID,
+                                                        address: additionalLocation.address,
+                                                        distance: "",
+                                                        formatted_address:
+                                                            additionalLocation.address,
+                                                        info_window_content: `<a class="title" href="${singleLocation.postURL}" title="${singleLocation.postTitle}">${singleLocation.postTitle}</a><span class="location gjm-icon-location">${singleLocation.address}</span>`,
+                                                        lat: additionalLocation.lat,
+                                                        lng: additionalLocation.lng,
+                                                        long: additionalLocation.lng,
+                                                        map_icon:
+                                                            "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                                                    });
+
+                                                    joinedLocations.push(
+                                                        additionalLocation.address
+                                                    );
+                                                }
+                                            );
+
+                                            $("ul.job_listings").append(`
+                                                <li class="post-${
+                                                    singleLocation.postID
+                                                } job_listing type-job_listing status-publish has-post-thumbnail hentry job_listing_region-northeast-trucking-jpbs job-type-local-trucking-jobs job-type-van-truckload-jobs" style="visibility: visible;">
+                                                    <a href="${singleLocation.postURL}">
+                                                        <img class="company_logo" src="${
+                                                            singleLocation.attachmentURL
+                                                        }" alt="${singleLocation.companyName}"/>		
+                                                        <div class="position">
+                                                            <h3>${singleLocation.postTitle}</h3>
+                                                        <div class="company">
+                                                            <strong>${
+                                                                singleLocation.companyName
+                                                            }</strong>
+                                                        </div>
+                                                        </div>
+                                                        <div class="location">
+                                                            ${joinedLocations.join(" | ")}
+                                                        </div>
+                                                        <ul class="meta">
+                                                            ${singleLocation.jobTypes?.join(" ")}
+                                                            ${singleLocation.postedTime}
+                                    					</ul>
+                                                    </a>
+                                                </li>
+                                            `);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    error: (error) => {
+                        console.error(error);
+                    },
+                });
+            }
+        }
+
+        // console.log(result);
 
         // Look for map object in the result object.
         var gjmMapObject = typeof result.gjm_map !== "undefined" ? result.gjm_map : false;
