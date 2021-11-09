@@ -1103,7 +1103,7 @@ jQuery(document).ready(function ($) {
             $.ajax({
                 method: "GET",
                 async: false,
-                url: `https://maps.googleapis.com/maps/api/geocode/json?address=${searchAddress}&key=AIzaSyD9rSRK-_zeTZlpTbgiityQ4NkoIxQWcmo`,
+                url: `https://maps.googleapis.com/maps/api/geocode/json?address=${searchAddress}&key=${localizeData.apiKey}`,
                 dataType: "json",
                 success: function (response) {
                     locationGeoCode = response.results[0]?.geometry.location;
@@ -1120,7 +1120,7 @@ jQuery(document).ready(function ($) {
                 $.ajax({
                     method: "GET",
                     async: false,
-                    url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&radius=321869&key=AIzaSyD9rSRK-_zeTZlpTbgiityQ4NkoIxQWcmo`,
+                    url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&radius=321869&key=${localizeData.apiKey}`,
                     success: function (response) {
                         if (response.results) {
                             response.results.forEach((cityLoations) => {
@@ -1166,8 +1166,6 @@ jQuery(document).ready(function ($) {
                                         let singleLocation = results[key];
 
                                         if (singleLocation.locations) {
-                                            // console.log(singleLocation);
-
                                             let joinedLocations = [];
 
                                             singleLocation.locations.forEach(

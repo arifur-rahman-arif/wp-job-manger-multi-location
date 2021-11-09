@@ -383,7 +383,8 @@ class Keendevs_Multi_Location_WP_JOB_M {
         // Localize variables for frontend scripts
         wp_localize_script('gjm-map', 'localizeData', [
             'siteURL' => site_url('/'),
-            'ajaxURL' => admin_url('admin-ajax.php')
+            'ajaxURL' => admin_url('admin-ajax.php'),
+            'apiKey'  => get_option('gjm_google_api_key')
         ]);
 
     }
