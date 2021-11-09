@@ -97,6 +97,39 @@ class Keendevs_Multi_Location_WP_JOB_M {
         /* get job listing based on location meta serach */
         add_action('wp_ajax_addition_loation_search', [$this, 'getJobListingByMeta']);
         add_action('wp_ajax_nopriv_addition_loation_search', [$this, 'getJobListingByMeta']);
+
+        /* get job listing based on location meta serach */
+        add_action('wp_ajax_nearby_locations', [$this, 'getNearbyLocation']);
+        add_action('wp_ajax_nopriv_nearby_locations', [$this, 'getNearbyLocation']);
+    }
+
+    public function getNearbyLocation() {
+        $output = [];
+
+        if (sanitize_text_field($_POST['action']) !== 'nearby_locations') {
+            $output['status'] = 'invalid';
+            $output['response'] = 'Action is not valid';
+            echo json_encode($output);
+            wp_die();
+        }
+
+        $url = $_POST['url'];
+
+        try {
+            $response = wp_remote_get($url);
+
+            if ($response['body']) {
+                $output['status'] = 'success';
+                $output['response'] = $response['body'];
+                echo json_encode($output);
+                wp_die();
+            }
+
+        } catch (\Throwable $th) {
+            throw new Exception($th, 1);
+        }
+
+        wp_die();
     }
 
     public function getJobListingByMeta() {
@@ -384,7 +417,7 @@ class Keendevs_Multi_Location_WP_JOB_M {
         wp_localize_script('gjm-map', 'localizeData', [
             'siteURL' => site_url('/'),
             'ajaxURL' => admin_url('admin-ajax.php'),
-            'apiKey'  => get_option('gjm_google_api_key')
+            'apiKey'  => get_option('job_manager_google_maps_api_key')
         ]);
 
     }

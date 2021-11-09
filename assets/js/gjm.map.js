@@ -1118,10 +1118,20 @@ jQuery(document).ready(function ($) {
 
             if (locationGeoCode.lat && locationGeoCode.lng) {
                 $.ajax({
-                    method: "GET",
+                    method: "POST",
                     async: false,
-                    url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&radius=321869&key=${localizeData.apiKey}`,
+                    url: localizeData.ajaxURL,
+                    data: {
+                        action: "nearby_locations",
+                        url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&radius=321869&key=${localizeData.apiKey}`,
+                    },
                     success: function (response) {
+                        if (response) {
+                            response = JSON.parse(response);
+                            if (response.status == "success") {
+                                response = JSON.parse(response.response);
+                            }
+                        }
                         if (response.results) {
                             response.results.forEach((cityLoations) => {
                                 let city = cityLoations.vicinity.split(",")[1]?.trim();
@@ -1142,7 +1152,7 @@ jQuery(document).ready(function ($) {
                 });
             }
 
-            if (nearbyLocations) {
+            if (nearbyLocations.length > 0) {
                 $.ajax({
                     type: "POST",
                     async: false,
@@ -1197,7 +1207,7 @@ jQuery(document).ready(function ($) {
                                                     <a href="${singleLocation.postURL}">
                                                         <img class="company_logo" src="${
                                                             singleLocation.attachmentURL
-                                                        }" alt="${singleLocation.companyName}"/>		
+                                                        }" alt="${singleLocation.companyName}"/>
                                                         <div class="position">
                                                             <h3>${singleLocation.postTitle}</h3>
                                                         <div class="company">
