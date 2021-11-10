@@ -40,8 +40,8 @@ class Keendevs_Multi_Location_WP_JOB_M {
      * @since 1.0
      */
     public function __construct() {
-        $this->version = '7.0';
-        // $this->version = time();
+        // $this->version = '7.0';
+        $this->version = time();
         $this->file = __FILE__;
         $this->basename = plugin_basename($this->file);
         $this->plugin_dir = plugin_dir_path($this->file);
@@ -149,19 +149,29 @@ class Keendevs_Multi_Location_WP_JOB_M {
             'posts_per_page' => -1,
             'post_status'    => 'publish',
             'meta_query'     => [
-                'relation' => 'OR',
-                [
-                    'key'     => '_job_location',
-                    'value'   => $nearbyLocations,
-                    'compare' => 'LIKE'
-                ],
-                [
-                    'key'     => '_additionallocations',
-                    'value'   => $nearbyLocations,
-                    'compare' => 'LIKE'
-                ]
+                'relation' => 'OR'
             ]
         ];
+
+        if (!is_array($nearbyLocations)) {
+            $output['response'] = 'empty';
+            $output['message'] = 'No job found';
+            echo json_encode($output);
+            wp_die();
+        }
+
+        foreach ($nearbyLocations as $key => $value) {
+            array_push($args['meta_query'], [
+                'key'     => '_additionallocations',
+                'value'   => $value,
+                'compare' => 'LIKE'
+            ]);
+            array_push($args['meta_query'], [
+                'key'     => '_job_location',
+                'value'   => $value,
+                'compare' => 'LIKE'
+            ]);
+        }
 
         $jobListings = get_posts($args);
 
@@ -198,6 +208,10 @@ class Keendevs_Multi_Location_WP_JOB_M {
             $primaryLocationAddress = get_post_meta($job->ID, '_job_location', true);
 
             if ($primaryLocationLating && $primaryLocationLong && $primaryLocationAddress) {
+
+                if (!is_array($posts[$job->ID]['locations'])) {
+                    $posts[$job->ID]['locations'] = [];
+                }
 
                 array_push($posts[$job->ID]['locations'], [
                     'address' => $primaryLocationAddress,

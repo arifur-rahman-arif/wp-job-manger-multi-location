@@ -1123,7 +1123,7 @@ jQuery(document).ready(function ($) {
                     url: localizeData.ajaxURL,
                     data: {
                         action: "nearby_locations",
-                        url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&radius=321869&key=${localizeData.apiKey}`,
+                        url: `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${locationGeoCode.lat},${locationGeoCode.lng}&keyword=city&radius=321869&key=${localizeData.apiKey}`,
                     },
                     success: function (response) {
                         if (response) {
@@ -1132,8 +1132,10 @@ jQuery(document).ready(function ($) {
                                 response = JSON.parse(response.response);
                             }
                         }
+
+                        console.log(response);
                         if (response.results) {
-                            response.results.forEach((cityLoations) => {
+                            response.results.forEach((cityLoations, i) => {
                                 let city = cityLoations.vicinity.split(",")[1]?.trim();
 
                                 if (city == undefined) {
@@ -1151,6 +1153,8 @@ jQuery(document).ready(function ($) {
                     },
                 });
             }
+
+            console.log(nearbyLocations);
 
             if (nearbyLocations.length > 0) {
                 $.ajax({
