@@ -5,7 +5,7 @@
  * Description: Enable adding multiple locations for a single listing for admin. This plugin also shows in the multiple locations on the frontend search and single listing page location map.
  * Author:      Azizul Haque
  * Author URI:  https://keendevs.com
- * Version:     7.0
+ * Version:     8.0
  * Text Domain: multi-location
  * Domain Path: /languages
  * License: GPLv2 or later
@@ -40,8 +40,8 @@ class Keendevs_Multi_Location_WP_JOB_M {
      * @since 1.0
      */
     public function __construct() {
-        // $this->version = '7.0';
-        $this->version = time();
+        $this->version = '8.0';
+        // $this->version = time();
         $this->file = __FILE__;
         $this->basename = plugin_basename($this->file);
         $this->plugin_dir = plugin_dir_path($this->file);
@@ -163,13 +163,13 @@ class Keendevs_Multi_Location_WP_JOB_M {
         foreach ($nearbyLocations as $key => $value) {
             array_push($args['meta_query'], [
                 'key'     => '_additionallocations',
-                'value'   => $value,
-                'compare' => 'LIKE'
+                'value'   => ('^' . $value),
+                'compare' => 'REGEXP'
             ]);
             array_push($args['meta_query'], [
                 'key'     => '_job_location',
-                'value'   => $value,
-                'compare' => 'LIKE'
+                'value'   => ('^' . $value),
+                'compare' => 'REGEXP'
             ]);
         }
 
