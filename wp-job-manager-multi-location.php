@@ -703,5 +703,3 @@ function wp_job_manager_multi_location() {
 add_action('plugins_loaded', 'wp_job_manager_multi_location', 99);
 
 // [jobs gjm_use=2]
-// AIzaSyBS1Z4OP83YXpyI08oOoz-JTSGuRta8G-g
-// AIzaSyD9rSRK-_zeTZlpTbgiityQ4NkoIxQWcmo
