@@ -1157,6 +1157,8 @@ jQuery(document).ready(function ($) {
             console.log(nearbyLocations);
 
             if (nearbyLocations.length > 0) {
+                $(".job_listings .no_job_listings_found").remove();
+
                 $.ajax({
                     type: "POST",
                     async: false,

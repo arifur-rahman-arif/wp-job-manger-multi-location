@@ -5,7 +5,7 @@
  * Description: Enable adding multiple locations for a single listing for admin. This plugin also shows in the multiple locations on the frontend search and single listing page location map.
  * Author:      Azizul Haque
  * Author URI:  https://keendevs.com
- * Version:     8.0
+ * Version:     4.0
  * Text Domain: multi-location
  * Domain Path: /languages
  * License: GPLv2 or later
@@ -40,7 +40,7 @@ class Keendevs_Multi_Location_WP_JOB_M {
      * @since 1.0
      */
     public function __construct() {
-        $this->version = '8.0';
+        $this->version = '4.0';
         // $this->version = time();
         $this->file = __FILE__;
         $this->basename = plugin_basename($this->file);
@@ -144,15 +144,6 @@ class Keendevs_Multi_Location_WP_JOB_M {
 
         $nearbyLocations = $this->sanitizeData($_POST['nearbyLocations']);
 
-        $args = [
-            'post_type'      => 'job_listing',
-            'posts_per_page' => -1,
-            'post_status'    => 'publish',
-            'meta_query'     => [
-                'relation' => 'OR'
-            ]
-        ];
-
         if (!is_array($nearbyLocations)) {
             $output['response'] = 'empty';
             $output['message'] = 'No job found';
@@ -160,20 +151,52 @@ class Keendevs_Multi_Location_WP_JOB_M {
             wp_die();
         }
 
+        $foundPost = [];
+
         foreach ($nearbyLocations as $key => $value) {
-            array_push($args['meta_query'], [
-                'key'     => '_additionallocations',
-                'value'   => ('^' . $value),
-                'compare' => 'REGEXP'
-            ]);
-            array_push($args['meta_query'], [
-                'key'     => '_job_location',
-                'value'   => ('^' . $value),
-                'compare' => 'REGEXP'
-            ]);
+
+            $args1 = [
+                'post_type'      => 'job_listing',
+                'posts_per_page' => -1,
+                'post_status'    => 'publish',
+                'meta_query'     => [
+                    [
+                        'key'     => '_additionallocations',
+                        'value'   => '("' . $value . ')',
+                        'compare' => 'REGEXP'
+                    ]
+                ]
+            ];
+
+            $args2 = [
+                'post_type'      => 'job_listing',
+                'posts_per_page' => -1,
+                'post_status'    => 'publish',
+                'meta_query'     => [
+                    [
+                        'key'     => '_job_location',
+                        'value'   => $value,
+                        'compare' => 'REGEXP'
+                    ]
+                ]
+            ];
+
+            $additionalLocationJobs = get_posts($args1);
+            $mainLocationJobs = get_posts($args2);
+
+            if ($additionalLocationJobs) {
+                $foundPost[] = $additionalLocationJobs;
+            }
+
+            if ($mainLocationJobs) {
+                $foundPost[] = $mainLocationJobs;
+            }
+
         }
 
-        $jobListings = get_posts($args);
+        $flatArray = array_merge(...$foundPost);
+
+        $jobListings = $flatArray;
 
         if (!$jobListings) {
             $output['response'] = 'empty';
